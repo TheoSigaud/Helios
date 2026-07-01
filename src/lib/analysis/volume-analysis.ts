@@ -74,11 +74,11 @@ export function isVolumeExpanding(
  *  2. Volume expansion trend (5-day vs 50-day average)
  *  3. Price direction (whether the volume supports a bullish or bearish move)
  *
- * @param data - OHLCV data array (oldest first), needs at least 50 bars
+ * @param data - OHLCV data array (oldest first), needs at least 10 bars
  * @returns A Signal with type, strength, and description
  */
 export function getVolumeSignal(data: OHLCVData[]): Signal {
-  if (data.length < 50) {
+  if (data.length < 10) {
     return {
       type: 'HOLD',
       source: 'Volume Analysis',
@@ -90,9 +90,9 @@ export function getVolumeSignal(data: OHLCVData[]): Signal {
   const currentBar = data[data.length - 1];
   const prevBar = data[data.length - 2];
   const currentVolume = currentBar.volume;
-  const avgVolume20 = calculateAverageVolume(data, 20);
-  const ratio = getVolumeRatio(currentVolume, avgVolume20);
-  const expanding = isVolumeExpanding(data, 5, 50);
+  const avgVolume4 = calculateAverageVolume(data, 4);
+  const ratio = getVolumeRatio(currentVolume, avgVolume4);
+  const expanding = isVolumeExpanding(data, 2, 10);
 
   // Determine price direction
   const priceUp = currentBar.close > prevBar.close;

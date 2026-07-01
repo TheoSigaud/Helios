@@ -36,11 +36,11 @@ export interface OpportunityResult {
 function getHorizonParams(horizon: Horizon) {
   switch (horizon) {
     case 'short':
-      return { rsperiod: 50, srLookback: 60, maWeight: 1.2, breakoutWeight: 1.3 };
+      return { rsperiod: 10, srLookback: 12, maWeight: 1.2, breakoutWeight: 1.3 };
     case 'medium':
-      return { rsperiod: 100, srLookback: 120, maWeight: 1.0, breakoutWeight: 1.0 };
+      return { rsperiod: 20, srLookback: 24, maWeight: 1.0, breakoutWeight: 1.0 };
     case 'long':
-      return { rsperiod: 200, srLookback: 250, maWeight: 0.8, breakoutWeight: 0.7 };
+      return { rsperiod: 40, srLookback: 50, maWeight: 0.8, breakoutWeight: 0.7 };
   }
 }
 
@@ -95,8 +95,8 @@ export function calculateOpportunityScore(
 
   // ── Moving Averages ──
   const ma30 = getLatestSMA(closes, 30);
-  const ma50 = getLatestSMA(closes, 50);
-  const ma200 = getLatestSMA(closes, 200);
+  const ma50 = getLatestSMA(closes, 10);
+  const ma200 = getLatestSMA(closes, 40);
   const ma30Values = calculateSMA(closes, 30);
   const ma30Slope = getMASlope(ma30Values, 10);
 
@@ -114,10 +114,10 @@ export function calculateOpportunityScore(
   signals.push(rsSignal);
 
   // ── Volume ──
-  const avgVolume = calculateAverageVolume(data, 20);
+  const avgVolume = calculateAverageVolume(data, 4);
   const currentVolume = data[data.length - 1].volume;
   const volumeRatio = getVolumeRatio(currentVolume, avgVolume);
-  const volumeExpanding = isVolumeExpanding(data, 5, 50);
+  const volumeExpanding = isVolumeExpanding(data, 2, 10);
   const volumeSignal = getVolumeSignal(data);
   signals.push(volumeSignal);
 
@@ -127,8 +127,8 @@ export function calculateOpportunityScore(
 
   // ── Breakout Signals ──
   const breakout30 = getBreakoutSignal(data, 30);
-  const breakout50 = getBreakoutSignal(data, 50);
-  const breakout200 = getBreakoutSignal(data, 200);
+  const breakout50 = getBreakoutSignal(data, 10);
+  const breakout200 = getBreakoutSignal(data, 40);
   if (breakout30) signals.push(breakout30);
   if (breakout50) signals.push(breakout50);
   if (breakout200) signals.push(breakout200);

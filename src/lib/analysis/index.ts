@@ -8,6 +8,7 @@ import type {
   FilterOptions,
 } from '@/lib/analysis/types';
 import { calculateOpportunityScore } from '@/lib/analysis/opportunity-score';
+import { aggregateToWeekly } from '@/lib/data/aggregation';
 
 // ── Re-export all types ──
 export type {
@@ -63,7 +64,9 @@ export function analyzeStock(
   const change = currentPrice - previousClose;
   const changePercent = previousClose !== 0 ? (change / previousClose) * 100 : 0;
 
-  const result = calculateOpportunityScore(data, benchmarkData, horizon);
+  const weeklyData = aggregateToWeekly(data);
+  const weeklyBenchmarkData = aggregateToWeekly(benchmarkData);
+  const result = calculateOpportunityScore(weeklyData, weeklyBenchmarkData, horizon);
 
   return {
     symbol,

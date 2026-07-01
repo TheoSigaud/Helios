@@ -34,7 +34,7 @@ const PHASE_ACTIONS: Record<1 | 2 | 3 | 4, 'BUY' | 'SELL' | 'HOLD' | 'WATCH'> = 
  * Confidence is calculated as the proportion of matching criteria (0 to 1).
  */
 export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
-  if (data.length < 60) {
+  if (data.length < 40) {
     // Not enough data to determine phase reliably; default to Phase 1
     return {
       stage: 1,
@@ -68,9 +68,9 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
   const priceAboveMA = currentClose > currentMA30;
   const priceNearMA = Math.abs(priceVsMa30Pct) <= 3;
 
-  // Volume analysis: compare recent 10-day avg volume to 50-day avg volume
-  const recentVolumes = data.slice(-10).map((d) => d.volume);
-  const longerVolumes = data.slice(-50).map((d) => d.volume);
+  // Volume analysis: compare recent 2-week avg volume to 10-week avg volume
+  const recentVolumes = data.slice(-2).map((d) => d.volume);
+  const longerVolumes = data.slice(-10).map((d) => d.volume);
   const recentAvgVol =
     recentVolumes.reduce((s, v) => s + v, 0) / recentVolumes.length;
   const longerAvgVol =
@@ -97,7 +97,7 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
   if (slopeUp && priceAboveMA) {
     phase = 2;
     let criteria = 0;
-    let total = 4;
+    const total = 4;
 
     if (slopeUp) criteria++;
     if (priceAboveMA) criteria++;
@@ -110,7 +110,7 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
   else if (slopeDown && !priceAboveMA) {
     phase = 4;
     let criteria = 0;
-    let total = 4;
+    const total = 4;
 
     if (slopeDown) criteria++;
     if (!priceAboveMA) criteria++;
@@ -123,7 +123,7 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
   else if (slopeFlat && priceNearMA && wasRecentlyHigher) {
     phase = 3;
     let criteria = 0;
-    let total = 4;
+    const total = 4;
 
     if (slopeFlat) criteria++;
     if (priceNearMA) criteria++;
@@ -136,7 +136,7 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
   else if (slopeFlat && priceNearMA) {
     phase = 1;
     let criteria = 0;
-    let total = 4;
+    const total = 4;
 
     if (slopeFlat) criteria++;
     if (priceNearMA) criteria++;
