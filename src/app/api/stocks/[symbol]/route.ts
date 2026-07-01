@@ -64,8 +64,16 @@ export async function GET(
         },
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[/api/stocks/[symbol]] Error:', error);
+    
+    if (error.name === 'NoDataError' || (error instanceof Error && error.message.includes('No data available'))) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: 'Failed to analyze stock',

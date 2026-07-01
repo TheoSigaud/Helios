@@ -64,7 +64,15 @@ export async function getAllStocksData(
   // we fetch missing stocks sequentially. In a real world app,
   // we might want a background worker, but this is safe for our fallback system.
   for (const sym of symbols) {
-    result[sym] = await getStockData(sym, days);
+    try {
+      result[sym] = await getStockData(sym, days);
+    } catch (error: any) {
+      if (error instanceof NoDataError || error.name === 'NoDataError') {
+        console.warn(`[getAllStocksData] Skipping ${sym}: ${error.message}`);
+      } else {
+        throw error;
+      }
+    }
   }
 
   return result;
