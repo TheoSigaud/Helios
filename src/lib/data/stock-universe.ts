@@ -167,7 +167,6 @@ export const DEFAULT_STOCKS: StockInfo[] = [
   { symbol: 'NVS', name: 'Novartis AG', sector: 'Healthcare' },
   { symbol: 'TTE', name: 'TotalEnergies SE', sector: 'Energy' },
   { symbol: 'LVMUY', name: 'LVMH Moët Hennessy', sector: 'Consumer Discretionary' },
-  { symbol: 'ORAN', name: 'Orange S.A.', sector: 'Communication Services' },
   { symbol: 'SNY', name: 'Sanofi', sector: 'Healthcare' },
   { symbol: 'UBS', name: 'UBS Group AG', sector: 'Financials' },
   { symbol: 'HSBC', name: 'HSBC Holdings plc', sector: 'Financials' },
