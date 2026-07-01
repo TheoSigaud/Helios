@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
       ? parseFloat(searchParams.get('minScore')!)
       : 0;
     const phasesParam = searchParams.get('phases');
+    const breakoutOnly = searchParams.get('breakoutOnly') === 'true';
+    const maBreakout = searchParams.get('maBreakout');
+    const phase1To2TransitionOnly = searchParams.get('phase1To2TransitionOnly') === 'true';
 
     // Validate horizon
     const validHorizons: Horizon[] = ['short', 'medium', 'long'];
@@ -72,6 +75,18 @@ export async function GET(request: NextRequest) {
     // ── Apply filters ───────────────────────────────────────────────────
     let filtered = results.filter((r) => r.opportunityScore >= minScore);
     filtered = filtered.filter((r) => selectedPhases.includes(r.phase.stage));
+    
+    if (breakoutOnly) {
+      filtered = filtered.filter((r) => r.signals.some(s => s.source.includes('Breakout')));
+    }
+    
+    if (maBreakout) {
+      filtered = filtered.filter((r) => r.signals.some(s => s.source.includes(`MA${maBreakout.replace('ma', '')} Breakout`)));
+    }
+    
+    if (phase1To2TransitionOnly) {
+      filtered = filtered.filter((r) => r.isPhase1To2Transition);
+    }
 
     // ── Group by sector ─────────────────────────────────────────────────
     const sectorBreakdown = groupBySector(filtered);

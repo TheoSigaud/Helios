@@ -20,6 +20,7 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { SyncButton } from "./sync-button";
 
 const NAV_ITEMS = [
   {
@@ -143,7 +144,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       {/* Footer */}
       <div className="p-4 space-y-3">
-        <div className="flex items-center justify-between px-2">
+        <SyncButton />
+        <div className="flex items-center justify-between px-2 pt-2">
           <span className="text-xs text-muted-foreground">Thème</span>
           <ThemeToggle />
         </div>

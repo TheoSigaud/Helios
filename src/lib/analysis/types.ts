@@ -48,6 +48,7 @@ export interface StockAnalysis {
   priceVsMa200: number;
   ma30Slope: number;
   volumeExpanding: boolean;
+  isPhase1To2Transition: boolean;
 }
 
 export interface SectorAnalysis {
@@ -68,4 +69,5 @@ export interface FilterOptions {
   phases: number[];
   breakoutOnly: boolean;
   maBreakout: 'ma30' | 'ma50' | 'ma200' | 'any' | null;
+  phase1To2TransitionOnly: boolean;
 }

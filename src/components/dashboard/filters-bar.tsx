@@ -72,6 +72,7 @@ export function FiltersBar({
       phases: [1, 2, 3, 4],
       breakoutOnly: false,
       maBreakout: null,
+      phase1To2TransitionOnly: false,
     });
   };
 
@@ -82,6 +83,7 @@ export function FiltersBar({
     filters.phases.length < 4,
     filters.breakoutOnly,
     filters.maBreakout !== null,
+    filters.phase1To2TransitionOnly,
   ].filter(Boolean).length;
 
   return (
@@ -254,6 +256,21 @@ export function FiltersBar({
               );
             })}
           </div>
+        </div>
+
+        {/* Phase 1 to 2 Transition Only */}
+        <div className="flex items-center space-x-2 min-w-[140px] pt-6">
+          <Checkbox 
+            id="phase1To2" 
+            checked={filters.phase1To2TransitionOnly}
+            onCheckedChange={(checked) => update({ phase1To2TransitionOnly: checked === true })}
+          />
+          <label 
+            htmlFor="phase1To2" 
+            className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Transition Phase 1 → 2
+          </label>
         </div>
       </div>
     </div>

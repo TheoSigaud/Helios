@@ -35,10 +35,25 @@ export function useStockScan(filters: FilterOptions) {
       if (filters.phases.length < 4) {
         params.set("phases", filters.phases.join(","));
       }
+      if (filters.breakoutOnly) {
+        params.set("breakoutOnly", "true");
+      }
+      if (filters.maBreakout) {
+        params.set("maBreakout", filters.maBreakout);
+      }
+      if (filters.phase1To2TransitionOnly) {
+        params.set("phase1To2TransitionOnly", "true");
+      }
 
       const res = await fetch(`/api/stocks/scan?${params.toString()}`);
       if (!res.ok) {
-        throw new Error(`API error: ${res.status}`);
+        let msg = `API error: ${res.status}`;
+        try {
+          const errJson = await res.json();
+          if (errJson.message) msg = errJson.message;
+          else if (errJson.error) msg = errJson.error;
+        } catch {}
+        throw new Error(msg);
       }
       const json = await res.json();
       setData(json);
@@ -47,7 +62,15 @@ export function useStockScan(filters: FilterOptions) {
     } finally {
       setLoading(false);
     }
-  }, [filters.horizon, filters.sectors.join(","), filters.minScore, filters.phases.join(",")]);
+  }, [
+    filters.horizon, 
+    filters.sectors.join(","), 
+    filters.minScore, 
+    filters.phases.join(","),
+    filters.breakoutOnly,
+    filters.maBreakout,
+    filters.phase1To2TransitionOnly
+  ]);
 
   useEffect(() => {
     fetchData();
@@ -126,7 +149,15 @@ export function useStockDetail(symbol: string) {
       setError(null);
       try {
         const res = await fetch(`/api/stocks/${symbol}`);
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        if (!res.ok) {
+          let msg = `API error: ${res.status}`;
+          try {
+            const errJson = await res.json();
+            if (errJson.message) msg = errJson.message;
+            else if (errJson.error) msg = errJson.error;
+          } catch {}
+          throw new Error(msg);
+        }
         const json = await res.json();
         setData(json);
       } catch (err) {

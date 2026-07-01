@@ -19,6 +19,7 @@ const DEFAULT_FILTERS: FilterOptions = {
   phases: [1, 2, 3, 4],
   breakoutOnly: false,
   maBreakout: null,
+  phase1To2TransitionOnly: false,
 };
 
 export default function WatchlistPage() {

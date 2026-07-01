@@ -27,6 +27,7 @@ export interface OpportunityResult {
   priceVsMa30: number;
   priceVsMa50: number;
   priceVsMa200: number;
+  isPhase1To2Transition: boolean;
 }
 
 /**
@@ -85,6 +86,7 @@ export function calculateOpportunityScore(
       priceVsMa30: 0,
       priceVsMa50: 0,
       priceVsMa200: 0,
+      isPhase1To2Transition: false,
     };
   }
 
@@ -253,9 +255,48 @@ export function calculateOpportunityScore(
 
   srScore = Math.max(0, Math.min(10, srScore));
 
+  // 7. Phase 1 to 2 Transition Bonus (max 20 pts)
+  let transitionBonus = 0;
+  // Perfect Weinstein buy signal: Price breaks out of MA30 on volume, while the MA30 slope is flat or just starting to turn up.
+  const isPhase1To2Transition = breakout30 !== null && ma30Slope >= -0.5 && ma30Slope <= 1.5;
+
+  if (isPhase1To2Transition) {
+    transitionBonus = 20;
+    signals.push({
+      type: 'BUY',
+      source: 'Phase 1 -> 2 Transition',
+      strength: 1,
+      description: 'Ideal Weinstein Buy: Breakout of MA30 with volume from a flat/basing MA30.',
+    });
+  }
+
+  // 8. Late Phase 2 Penalty
+  let latePhasePenalty = 0;
+  if (phase.stage === 2) {
+    if (priceVsMa30 > 25) {
+      // Climax run / overextended
+      latePhasePenalty = 20;
+      signals.push({
+        type: 'SELL',
+        source: 'Late Phase 2',
+        strength: 0.8,
+        description: 'Price is excessively far above MA30 (Climax). High risk of sharp pullback.',
+      });
+    } else if (ma30Slope > 0 && ma30Slope < 1.5 && priceVsMa30 < 5) {
+      // Losing momentum, nearing Phase 3
+      latePhasePenalty = 15;
+      signals.push({
+        type: 'SELL',
+        source: 'Late Phase 2',
+        strength: 0.7,
+        description: 'Momentum is fading. MA30 is flattening and price is nearing the average. Risk of Phase 3.',
+      });
+    }
+  }
+
   // ── Total Score ──
   const totalScore = Math.round(
-    Math.max(0, Math.min(100, phaseScore + rsScore + maScore + breakoutScore + volumeScore + srScore))
+    Math.max(0, Math.min(100, phaseScore + rsScore + maScore + breakoutScore + volumeScore + srScore + transitionBonus - latePhasePenalty))
   );
 
   return {
@@ -275,5 +316,6 @@ export function calculateOpportunityScore(
     priceVsMa30,
     priceVsMa50,
     priceVsMa200,
+    isPhase1To2Transition,
   };
 }

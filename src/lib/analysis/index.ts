@@ -91,6 +91,7 @@ export function analyzeStock(
     priceVsMa200: Math.round(result.priceVsMa200 * 100) / 100,
     ma30Slope: Math.round(result.ma30Slope * 100) / 100,
     volumeExpanding: result.volumeExpanding,
+    isPhase1To2Transition: result.isPhase1To2Transition,
   };
 }
 
@@ -207,5 +208,6 @@ function createEmptyAnalysis(
     priceVsMa200: 0,
     ma30Slope: 0,
     volumeExpanding: false,
+    isPhase1To2Transition: false,
   };
 }
