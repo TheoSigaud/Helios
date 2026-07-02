@@ -9,6 +9,7 @@ import {
   getVolumeSignal,
 } from '@/lib/analysis/volume-analysis';
 import { findSupportResistance } from '@/lib/analysis/support-resistance';
+import { detectVCP } from '@/lib/analysis/volatility';
 
 export interface OpportunityResult {
   score: number;
@@ -28,6 +29,8 @@ export interface OpportunityResult {
   priceVsMa50: number;
   priceVsMa200: number;
   isPhase1To2Transition: boolean;
+  isVCP: boolean;
+  distanceTo52WeekHigh: number;
 }
 
 /**
@@ -87,6 +90,8 @@ export function calculateOpportunityScore(
       priceVsMa50: 0,
       priceVsMa200: 0,
       isPhase1To2Transition: false,
+      isVCP: false,
+      distanceTo52WeekHigh: 100,
     };
   }
 
@@ -133,18 +138,27 @@ export function calculateOpportunityScore(
   if (breakout50) signals.push(breakout50);
   if (breakout200) signals.push(breakout200);
 
+  // ── VCP & 52-Week High (Minervini Trend Template) ──
+  const isVCP = detectVCP(data, 14, 20);
+  
+  // Calculate 52-week high (approx 252 trading days)
+  const lookback52w = Math.min(data.length, 252);
+  const data52w = data.slice(-lookback52w);
+  const high52Week = Math.max(...data52w.map(d => d.high));
+  const distanceTo52WeekHigh = high52Week > 0 ? ((high52Week - currentPrice) / high52Week) * 100 : 0;
+
   // ════════════════════════════════════════════════
   //  SCORING
   // ════════════════════════════════════════════════
 
-  // 1. Phase Score (max 25 pts)
+  // 1. Phase Score (max 20 pts)
   let phaseScore = 0;
   switch (phase.stage) {
     case 2:
-      phaseScore = 25 * phase.confidence;
+      phaseScore = 20 * phase.confidence;
       break;
     case 1:
-      phaseScore = 12 * phase.confidence; // Potential basing
+      phaseScore = 10 * phase.confidence; // Potential basing
       break;
     case 3:
       phaseScore = 5 * phase.confidence; // Caution
@@ -162,26 +176,26 @@ export function calculateOpportunityScore(
     description: `${phase.label} (Stage ${phase.stage}) — ${phase.description.split('.')[0]}.`,
   });
 
-  // 2. RS Score (max 20 pts)
+  // 2. RS Score (max 15 pts)
   let rsScore = 0;
-  if (mansfieldRS > 4) rsScore = 20;
-  else if (mansfieldRS > 2) rsScore = 16;
-  else if (mansfieldRS > 0) rsScore = 10 + (mansfieldRS / 2) * 6;
-  else if (mansfieldRS > -2) rsScore = 5 + ((mansfieldRS + 2) / 2) * 5;
-  else rsScore = Math.max(0, 5 + mansfieldRS);
+  if (mansfieldRS > 4) rsScore = 15;
+  else if (mansfieldRS > 2) rsScore = 12;
+  else if (mansfieldRS > 0) rsScore = 8 + (mansfieldRS / 2) * 4;
+  else if (mansfieldRS > -2) rsScore = 3 + ((mansfieldRS + 2) / 2) * 5;
+  else rsScore = Math.max(0, 3 + mansfieldRS);
 
-  // 3. MA Score (max 15 pts)
+  // 3. MA Score (max 10 pts)
   let maScore = 0;
 
   // Price above all MAs = fully bullish alignment
-  if (currentPrice > ma30 && ma30 > 0) maScore += 4 * params.maWeight;
-  if (currentPrice > ma50 && ma50 > 0) maScore += 4 * params.maWeight;
-  if (currentPrice > ma200 && ma200 > 0) maScore += 4 * params.maWeight;
+  if (currentPrice > ma30 && ma30 > 0) maScore += 3 * params.maWeight;
+  if (currentPrice > ma50 && ma50 > 0) maScore += 3 * params.maWeight;
+  if (currentPrice > ma200 && ma200 > 0) maScore += 2 * params.maWeight;
 
   // MA stacking (30 > 50 > 200) = bullish order
-  if (ma30 > ma50 && ma50 > ma200 && ma200 > 0) maScore += 3 * params.maWeight;
+  if (ma30 > ma50 && ma50 > ma200 && ma200 > 0) maScore += 2 * params.maWeight;
 
-  maScore = Math.min(15, maScore);
+  maScore = Math.min(10, maScore);
 
   // Add MA alignment signal
   const maAboveCount = [ma30, ma50, ma200].filter(
@@ -198,62 +212,100 @@ export function calculateOpportunityScore(
     }`,
   });
 
-  // 4. Breakout Score (max 15 pts)
+  // 4. Breakout Score (max 10 pts)
   let breakoutScore = 0;
   const breakouts = [breakout30, breakout50, breakout200].filter(Boolean);
   if (breakouts.length > 0) {
     // More breakouts = stronger signal
-    breakoutScore = Math.min(15, breakouts.length * 6 * params.breakoutWeight);
+    breakoutScore = Math.min(10, breakouts.length * 4 * params.breakoutWeight);
     // Bonus for MA200 breakout (most significant)
-    if (breakout200) breakoutScore = Math.min(15, breakoutScore + 3);
+    if (breakout200) breakoutScore = Math.min(10, breakoutScore + 2);
   }
 
-  // 5. Volume Score (max 15 pts)
+  // 5. Volume Score (max 10 pts)
   let volumeScore = 0;
 
   // Volume confirming direction
   if (volumeSignal.type === 'BUY') {
-    volumeScore = 10 + volumeSignal.strength * 5;
+    volumeScore = 7 + volumeSignal.strength * 3;
   } else if (volumeSignal.type === 'HOLD') {
-    volumeScore = 5;
+    volumeScore = 4;
   } else {
     // Selling volume is bad for a long opportunity
-    volumeScore = 2;
+    volumeScore = 1;
   }
 
   // Bonus for expanding volume in an uptrend
   if (volumeExpanding && phase.stage === 2) {
-    volumeScore = Math.min(15, volumeScore + 3);
+    volumeScore = Math.min(10, volumeScore + 2);
   }
 
-  volumeScore = Math.min(15, volumeScore);
+  volumeScore = Math.min(10, volumeScore);
 
-  // 6. S/R Score (max 10 pts)
-  let srScore = 5; // Neutral baseline
-
-  if (supportLevels.length > 0) {
-    const nearestSupport = supportLevels[0]; // Highest support (closest below price)
-    const distToSupport = ((currentPrice - nearestSupport) / currentPrice) * 100;
-
-    // Near support = good risk/reward
-    if (distToSupport < 3) srScore += 3;
-    else if (distToSupport < 5) srScore += 2;
-    else srScore += 1;
-  }
+  // 6. S/R Score (Pivot Point Breakout) (max 10 pts)
+  let srScore = 0; 
+  let isPivotPointBreakout = false;
 
   if (resistanceLevels.length > 0) {
-    const nearestResistance = resistanceLevels[0]; // Lowest resistance (closest above price)
-    const distToResistance =
-      ((nearestResistance - currentPrice) / currentPrice) * 100;
-
-    // Far from resistance = more upside room
-    if (distToResistance > 10) srScore += 2;
-    else if (distToResistance > 5) srScore += 1;
-    // Very close to resistance = ceiling concern, subtract
-    else if (distToResistance < 2) srScore -= 2;
+    const nearestResistance = resistanceLevels[0]; // Lowest resistance (closest above price or just broken)
+    
+    // Check if price is breaking through resistance (current price > resistance, but close enough)
+    const distFromResistance = ((currentPrice - nearestResistance) / nearestResistance) * 100;
+    
+    if (distFromResistance >= 0 && distFromResistance < 3 && volumeSignal.type === 'BUY') {
+      // Pivot Point Breakout! Breaking resistance with volume.
+      srScore = 10;
+      isPivotPointBreakout = true;
+      signals.push({
+        type: 'BUY',
+        source: 'Pivot Point Breakout',
+        strength: 1,
+        description: 'Price is breaking through key resistance with expanding volume.',
+      });
+    } else if (distFromResistance < 0 && distFromResistance > -3) {
+      // Very close to resistance, potential breakout soon
+      srScore = 4;
+    } else if (distFromResistance < -10) {
+      // Far from resistance = more upside room, but no immediate trigger
+      srScore = 5;
+    } else {
+      srScore = 2;
+    }
+  } else {
+    // No resistance found, blue sky breakout potential
+    srScore = 8;
+  }
+  
+  if (supportLevels.length > 0 && srScore < 10) {
+    const nearestSupport = supportLevels[0]; 
+    const distToSupport = ((currentPrice - nearestSupport) / currentPrice) * 100;
+    // Near support = good risk/reward
+    if (distToSupport > 0 && distToSupport < 3) srScore = Math.max(srScore, 6);
   }
 
   srScore = Math.max(0, Math.min(10, srScore));
+
+  // 7. Trend Template Score (Proximity to 52w High) (max 10 pts)
+  let trendTemplateScore = 0;
+  if (distanceTo52WeekHigh <= 10) {
+    trendTemplateScore = 10; // At or very close to 52w high
+  } else if (distanceTo52WeekHigh <= 25) {
+    trendTemplateScore = 7; // Within 25% of 52w high (Minervini criteria)
+  } else if (distanceTo52WeekHigh <= 40) {
+    trendTemplateScore = 3;
+  }
+
+  // 8. Volatility Contraction Pattern (VCP) Bonus (max 15 pts)
+  let vcpScore = 0;
+  if (isVCP) {
+    vcpScore = 15;
+    signals.push({
+      type: 'BUY',
+      source: 'Volatility Contraction (VCP)',
+      strength: 1,
+      description: 'Volatility has contracted and volume dried up prior to this move (Minervini VCP).',
+    });
+  }
 
   // 7. Phase 1 to 2 Transition Bonus (max 20 pts)
   let transitionBonus = 0;
@@ -296,7 +348,7 @@ export function calculateOpportunityScore(
 
   // ── Total Score ──
   const totalScore = Math.round(
-    Math.max(0, Math.min(100, phaseScore + rsScore + maScore + breakoutScore + volumeScore + srScore + transitionBonus - latePhasePenalty))
+    Math.max(0, Math.min(100, phaseScore + rsScore + maScore + breakoutScore + volumeScore + srScore + trendTemplateScore + vcpScore + transitionBonus - latePhasePenalty))
   );
 
   return {
@@ -317,5 +369,7 @@ export function calculateOpportunityScore(
     priceVsMa50,
     priceVsMa200,
     isPhase1To2Transition,
+    isVCP,
+    distanceTo52WeekHigh,
   };
 }

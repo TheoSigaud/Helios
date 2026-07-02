@@ -1,6 +1,6 @@
 "use server";
 
-import { fetchTimeSeriesWithFallback } from '@/lib/api/provider-manager';
+import { fetchTimeSeriesWithFallback, fetchBatchTimeSeriesWithFallback } from '@/lib/api/provider-manager';
 import { setDiskCache, clearDiskCache } from '@/lib/data/cache';
 import { DEFAULT_STOCKS, BENCHMARK_SYMBOL } from '@/lib/data/stock-universe';
 
@@ -11,7 +11,7 @@ export async function getSyncTargets() {
   };
 }
 
-export async function syncSingleSymbol(symbol: string, days: number = 500) {
+export async function syncSingleSymbol(symbol: string, days: number = 1825) {
   try {
     console.log(`[Sync] Fetching data for ${symbol}...`);
     const data = await fetchTimeSeriesWithFallback(symbol, days);
@@ -23,5 +23,35 @@ export async function syncSingleSymbol(symbol: string, days: number = 500) {
   } catch (error: any) {
     console.error(`[Sync] Failed to fetch data for ${symbol}:`, error.message);
     return { success: false, symbol, message: error.message };
+  }
+}
+
+export async function syncBatchSymbols(symbols: string[], days: number = 1825) {
+  try {
+    console.log(`[Sync] Fetching batch data for ${symbols.length} symbols...`);
+    const results = await fetchBatchTimeSeriesWithFallback(symbols, days);
+    
+    let successCount = 0;
+    const failedSymbols: string[] = [];
+
+    for (const sym of symbols) {
+      const data = results[sym];
+      if (data && data.length > 0) {
+        await setDiskCache(sym, days, data);
+        successCount++;
+      } else {
+        failedSymbols.push(sym);
+      }
+    }
+
+    return { 
+      success: true, 
+      successCount, 
+      failedCount: failedSymbols.length,
+      failedSymbols 
+    };
+  } catch (error: any) {
+    console.error(`[Sync] Failed to fetch batch data:`, error.message);
+    return { success: false, message: error.message, failedSymbols: symbols };
   }
 }

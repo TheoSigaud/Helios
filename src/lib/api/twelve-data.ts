@@ -17,10 +17,10 @@ const MAX_BATCH_SIZE = 8;
 const INTER_CHUNK_DELAY_MS = 8_500;
 
 /** Maximum number of retries on 429 (rate-limited) responses. */
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 1;
 
 /** Base delay (ms) for exponential backoff on 429 errors. */
-const RETRY_BASE_DELAY_MS = 15_000;
+const RETRY_BASE_DELAY_MS = 1_000;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -117,7 +117,7 @@ function parseValues(raw: TwelveDataValue[]): OHLCVData[] {
  */
 export async function fetchTimeSeries(
   symbol: string,
-  interval: string = '1day',
+  interval: string = '1week',
   outputsize: number = 365,
 ): Promise<OHLCVData[]> {
   const apiKey = getApiKey();
@@ -168,7 +168,7 @@ export async function fetchTimeSeries(
  */
 export async function fetchBatchTimeSeries(
   symbols: string[],
-  interval: string = '1day',
+  interval: string = '1week',
   outputsize: number = 365,
 ): Promise<Record<string, OHLCVData[]>> {
   if (symbols.length === 0) return {};

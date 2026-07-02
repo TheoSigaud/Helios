@@ -32,6 +32,7 @@ export {
   getVolumeSignal,
 } from '@/lib/analysis/volume-analysis';
 export { findSupportResistance } from '@/lib/analysis/support-resistance';
+export { calculateATR, detectVCP } from '@/lib/analysis/volatility';
 export { calculateOpportunityScore } from '@/lib/analysis/opportunity-score';
 
 /**
@@ -95,6 +96,8 @@ export function analyzeStock(
     ma30Slope: Math.round(result.ma30Slope * 100) / 100,
     volumeExpanding: result.volumeExpanding,
     isPhase1To2Transition: result.isPhase1To2Transition,
+    isVCP: result.isVCP,
+    distanceTo52WeekHigh: Math.round(result.distanceTo52WeekHigh * 100) / 100,
   };
 }
 
@@ -212,5 +215,7 @@ function createEmptyAnalysis(
     ma30Slope: 0,
     volumeExpanding: false,
     isPhase1To2Transition: false,
+    isVCP: false,
+    distanceTo52WeekHigh: 100,
   };
 }

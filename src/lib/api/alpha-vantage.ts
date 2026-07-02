@@ -16,7 +16,7 @@ function getApiKey(): string {
 }
 
 interface AlphaVantageResponse {
-  'Time Series (Daily)'?: Record<string, {
+  'Weekly Time Series'?: Record<string, {
     '1. open': string;
     '2. high': string;
     '3. low': string;
@@ -49,9 +49,9 @@ export async function fetchTimeSeriesAlphaVantage(
   const outputsize = days > 140 ? 'full' : 'compact';
   
   const url = new URL(BASE_URL);
-  url.searchParams.set('function', 'TIME_SERIES_DAILY');
+  url.searchParams.set('function', 'TIME_SERIES_WEEKLY');
   url.searchParams.set('symbol', symbol);
-  url.searchParams.set('outputsize', outputsize);
+  // outputsize is not required for weekly (it returns all historical data)
   url.searchParams.set('apikey', apiKey);
 
   const response = await fetch(url.toString(), { cache: 'no-store' });
@@ -81,7 +81,7 @@ export async function fetchTimeSeriesAlphaVantage(
     throw err;
   }
 
-  const timeSeries = data['Time Series (Daily)'];
+  const timeSeries = data['Weekly Time Series'];
   if (!timeSeries) {
     throw new Error(`No data returned from Alpha Vantage for symbol: ${symbol}`);
   }

@@ -49,6 +49,8 @@ export interface StockAnalysis {
   ma30Slope: number;
   volumeExpanding: boolean;
   isPhase1To2Transition: boolean;
+  isVCP: boolean;
+  distanceTo52WeekHigh: number;
 }
 
 export interface SectorAnalysis {

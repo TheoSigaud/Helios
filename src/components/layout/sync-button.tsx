@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getSyncTargets, syncSingleSymbol } from "@/app/actions/sync";
+import { getSyncTargets, syncBatchSymbols } from "@/app/actions/sync";
 
 export function SyncButton() {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -20,13 +20,19 @@ export function SyncButton() {
       const allSymbols = [targets.benchmark, ...targets.symbols];
       setProgress({ current: 0, total: allSymbols.length });
 
-      for (let i = 0; i < allSymbols.length; i++) {
-        const symbol = allSymbols[i];
-        const res = await syncSingleSymbol(symbol);
+      // Regrouper par paquets de 8 pour le batching natif de Twelve Data
+      const CHUNK_SIZE = 8;
+      for (let i = 0; i < allSymbols.length; i += CHUNK_SIZE) {
+        const chunk = allSymbols.slice(i, i + CHUNK_SIZE);
+        const res = await syncBatchSymbols(chunk);
+        
         if (!res.success) {
-           console.error(`Failed to sync ${symbol}: ${res.message}`);
+           console.error(`Failed to sync chunk: ${res.message}`);
+        } else if (res.failedCount && res.failedCount > 0) {
+           console.warn(`Partial failure in chunk. Failed symbols: ${res.failedSymbols?.join(', ')}`);
         }
-        setProgress({ current: i + 1, total: allSymbols.length });
+        
+        setProgress({ current: Math.min(i + CHUNK_SIZE, allSymbols.length), total: allSymbols.length });
       }
 
       window.location.reload();

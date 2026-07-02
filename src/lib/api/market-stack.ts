@@ -96,5 +96,44 @@ export async function fetchTimeSeriesMarketStack(
   // MarketStack returns newest first, so we sort chronologically (oldest first)
   parsed.sort((a, b) => a.date.localeCompare(b.date));
 
-  return parsed;
+  return aggregateDailyToWeekly(parsed);
+}
+
+function aggregateDailyToWeekly(dailyData: OHLCVData[]): OHLCVData[] {
+  if (dailyData.length === 0) return [];
+
+  const weekly: OHLCVData[] = [];
+  
+  const getYearWeek = (dateStr: string) => {
+    const d = new Date(dateStr);
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+  };
+
+  let currentWeek = '';
+  let currentCandle: OHLCVData | null = null;
+
+  for (const daily of dailyData) {
+    const week = getYearWeek(daily.date);
+    if (week !== currentWeek) {
+      if (currentCandle) {
+        weekly.push(currentCandle);
+      }
+      currentWeek = week;
+      currentCandle = { ...daily };
+    } else if (currentCandle) {
+      currentCandle.high = Math.max(currentCandle.high, daily.high);
+      currentCandle.low = Math.min(currentCandle.low, daily.low);
+      currentCandle.close = daily.close;
+      currentCandle.volume += daily.volume;
+      currentCandle.date = daily.date;
+    }
+  }
+  if (currentCandle) {
+    weekly.push(currentCandle);
+  }
+
+  return weekly;
 }
