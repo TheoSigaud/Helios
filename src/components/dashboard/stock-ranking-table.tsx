@@ -31,6 +31,8 @@ import {
   TrendingDown,
   Volume2,
   ExternalLink,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import type { StockAnalysis } from "@/lib/analysis/types";
 
@@ -74,6 +76,12 @@ export function StockRankingTable({
 }: StockRankingTableProps) {
   const [sortField, setSortField] = useState<SortField>("score");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [stocks]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -82,6 +90,7 @@ export function StockRankingTable({
       setSortField(field);
       setSortDir(field === "symbol" ? "asc" : "desc");
     }
+    setCurrentPage(1);
   };
 
   const sortedStocks = useMemo(() => {
@@ -137,6 +146,12 @@ export function StockRankingTable({
         : (valB as number) - (valA as number);
     });
   }, [stocks, sortField, sortDir]);
+
+  const totalPages = Math.ceil(sortedStocks.length / pageSize);
+  const paginatedStocks = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return sortedStocks.slice(startIndex, startIndex + pageSize);
+  }, [sortedStocks, currentPage]);
 
   const SortButton = ({
     field,
@@ -200,9 +215,9 @@ export function StockRankingTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedStocks.map((stock, idx) => {
+            {paginatedStocks.map((stock, idx) => {
               const isInWatchlist = watchlist.includes(stock.symbol);
-              const rank = idx + 1;
+              const rank = (currentPage - 1) * pageSize + idx + 1;
 
               return (
                 <TableRow
@@ -420,6 +435,37 @@ export function StockRankingTable({
       {sortedStocks.length === 0 && (
         <div className="py-12 text-center text-muted-foreground text-sm">
           Aucune action ne correspond aux filtres sélectionnés.
+        </div>
+      )}
+
+      {sortedStocks.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-4 border-t border-border bg-muted/10">
+          <div className="text-sm text-muted-foreground hidden sm:block">
+            Affichage de {(currentPage - 1) * pageSize + 1} à {Math.min(currentPage * pageSize, sortedStocks.length)} sur {sortedStocks.length} actions
+          </div>
+          <div className="flex items-center justify-end sm:justify-between w-full sm:w-auto gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Précédent
+            </Button>
+            <div className="text-sm font-medium px-2">
+              Page {currentPage} sur {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Suivant
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
         </div>
       )}
     </div>
