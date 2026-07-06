@@ -15,6 +15,7 @@ export function StockDetailChart({
   className,
 }: StockDetailChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chartInstanceRef = useRef<any>(null);
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export function StockDetailChart({
         low: d.low,
         close: d.close,
       }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       candleSeries.setData(candleData as any);
 
       // MA overlay lines
@@ -95,6 +97,7 @@ export function StockDetailChart({
           priceLineVisible: false,
           crosshairMarkerVisible: false,
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         lineSeries.setData(maData as any);
       };
 
@@ -115,6 +118,7 @@ export function StockDetailChart({
         value: d.volume,
         color: d.close >= d.open ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)",
       }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       volumeSeries.setData(volumeData as any);
 
       chart.timeScale().fitContent();

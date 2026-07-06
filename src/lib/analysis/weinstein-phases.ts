@@ -78,11 +78,11 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
   const volumeRatio = longerAvgVol > 0 ? recentAvgVol / longerAvgVol : 1;
   const lowVolume = volumeRatio < 1.1;
 
-  // Check if MA30 was recently higher (indicating it was in an uptrend before flattening = Phase 3)
+  // Check if MA30 was recently in an uptrend (indicating it was advancing before flattening = Phase 3)
   const validMA30 = ma30Values.filter((v) => !isNaN(v));
-  const wasRecentlyHigher =
+  const wasRecentlyInUptrend =
     validMA30.length >= 30 &&
-    validMA30[validMA30.length - 30] > currentMA30 * 1.01;
+    validMA30[validMA30.length - 30] < currentMA30 * 0.99;
 
   // Flat slope check
   const slopeFlat = Math.abs(slope) < 0.5;
@@ -120,14 +120,14 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
     confidence = criteria / total;
   }
   // Phase 3: Topping / Distribution
-  else if (slopeFlat && priceNearMA && wasRecentlyHigher) {
+  else if (slopeFlat && priceNearMA && wasRecentlyInUptrend) {
     phase = 3;
     let criteria = 0;
     const total = 4;
 
     if (slopeFlat) criteria++;
     if (priceNearMA) criteria++;
-    if (wasRecentlyHigher) criteria++;
+    if (wasRecentlyInUptrend) criteria++;
     if (!lowVolume) criteria++; // Higher volume during topping
 
     confidence = criteria / total;
@@ -141,7 +141,7 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
     if (slopeFlat) criteria++;
     if (priceNearMA) criteria++;
     if (lowVolume) criteria++;
-    if (!wasRecentlyHigher) criteria++; // Was not recently in uptrend
+    if (!wasRecentlyInUptrend) criteria++; // Was not recently in uptrend
 
     confidence = criteria / total;
   }
@@ -153,10 +153,10 @@ export function detectPhase(data: OHLCVData[]): WeinsteinPhase {
     phase = 4;
     confidence = 0.4;
   } else if (priceAboveMA) {
-    phase = wasRecentlyHigher ? 3 : 1;
+    phase = wasRecentlyInUptrend ? 3 : 1;
     confidence = 0.35;
   } else {
-    phase = wasRecentlyHigher ? 4 : 1;
+    phase = wasRecentlyInUptrend ? 4 : 1;
     confidence = 0.3;
   }
 

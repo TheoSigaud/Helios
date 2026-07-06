@@ -94,11 +94,13 @@ export default function StockDetailPage() {
   }
 
   const recommendation =
-    stock.opportunityScore >= 70
+    stock.opportunityScore >= 75
       ? { label: "ACHAT", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: TrendingUp }
-      : stock.opportunityScore >= 40
+      : stock.opportunityScore >= 50
         ? { label: "OBSERVER", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: Activity }
-        : { label: "ÉVITER", color: "text-red-400 bg-red-500/10 border-red-500/20", icon: Shield };
+        : stock.opportunityScore >= 30
+          ? { label: "FAIBLE", color: "text-orange-400 bg-orange-500/10 border-orange-500/20", icon: AlertCircle }
+          : { label: "ÉVITER", color: "text-red-400 bg-red-500/10 border-red-500/20", icon: Shield };
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1400px] mx-auto">
@@ -272,7 +274,7 @@ export default function StockDetailPage() {
               <span className="font-mono">{formatLargeNumber(stock.currentVolume)}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Moy. 20j</span>
+              <span className="text-muted-foreground">Moy. 10 sem.</span>
               <span className="font-mono">{formatLargeNumber(stock.avgVolume)}</span>
             </div>
             <div className="flex justify-between text-xs">

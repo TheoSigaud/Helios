@@ -20,21 +20,19 @@ import {
 import { PhaseBadge } from "@/components/stock/phase-badge";
 import { ScoreBadge } from "@/components/stock/score-gauge";
 import { MiniSparkline } from "@/components/charts/mini-sparkline";
-import { MiniVolumeBar } from "@/components/charts/mini-volume-bar";
+
 import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Star,
-  StarOff,
   TrendingUp,
   TrendingDown,
-  Volume2,
   ExternalLink,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import type { StockAnalysis } from "@/lib/analysis/types";
+import type { StockAnalysisSummary } from "@/lib/analysis/types";
 
 type SortField =
   | "rank"
@@ -48,10 +46,42 @@ type SortField =
 type SortDirection = "asc" | "desc";
 
 interface StockRankingTableProps {
-  stocks: StockAnalysis[];
+  stocks: StockAnalysisSummary[];
   watchlist?: string[];
   onToggleWatchlist?: (symbol: string) => void;
   className?: string;
+}
+
+function SortButton({
+  field,
+  currentSortField,
+  sortDir,
+  handleSort,
+  children,
+}: {
+  field: SortField;
+  currentSortField: SortField;
+  sortDir: SortDirection;
+  handleSort: (field: SortField) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={() => handleSort(field)}
+      className="flex items-center gap-1 hover:text-foreground transition-colors text-left"
+    >
+      {children}
+      {currentSortField === field ? (
+        sortDir === "asc" ? (
+          <ArrowUp className="h-3 w-3" />
+        ) : (
+          <ArrowDown className="h-3 w-3" />
+        )
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-30" />
+      )}
+    </button>
+  );
 }
 
 function formatNumber(n: number, decimals = 2): string {
@@ -80,6 +110,7 @@ export function StockRankingTable({
   const pageSize = 50;
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [stocks]);
 
@@ -153,60 +184,38 @@ export function StockRankingTable({
     return sortedStocks.slice(startIndex, startIndex + pageSize);
   }, [sortedStocks, currentPage]);
 
-  const SortButton = ({
-    field,
-    children,
-  }: {
-    field: SortField;
-    children: React.ReactNode;
-  }) => (
-    <button
-      onClick={() => handleSort(field)}
-      className="flex items-center gap-1 hover:text-foreground transition-colors text-left"
-    >
-      {children}
-      {sortField === field ? (
-        sortDir === "asc" ? (
-          <ArrowUp className="h-3 w-3" />
-        ) : (
-          <ArrowDown className="h-3 w-3" />
-        )
-      ) : (
-        <ArrowUpDown className="h-3 w-3 opacity-30" />
-      )}
-    </button>
-  );
-
   return (
     <div className={cn("rounded-xl border border-border overflow-hidden", className)}>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="w-10 text-center text-[11px]">#</TableHead>
-              <TableHead className="text-[11px] min-w-[140px]">
-                <SortButton field="symbol">Action</SortButton>
+              <TableHead className="w-[60px] text-center text-[11px]">
+                <SortButton field="rank" currentSortField={sortField} sortDir={sortDir} handleSort={handleSort}>#</SortButton>
               </TableHead>
-              <TableHead className="text-[11px] text-center">
-                <SortButton field="score">Score</SortButton>
+              <TableHead className="min-w-[140px] text-[11px]">
+                <SortButton field="symbol" currentSortField={sortField} sortDir={sortDir} handleSort={handleSort}>Action</SortButton>
               </TableHead>
-              <TableHead className="text-[11px]">
-                <SortButton field="phase">Phase</SortButton>
+              <TableHead className="w-[100px] text-center text-[11px]">
+                <SortButton field="score" currentSortField={sortField} sortDir={sortDir} handleSort={handleSort}>Score</SortButton>
+              </TableHead>
+              <TableHead className="w-[110px] text-center text-[11px] hidden sm:table-cell">
+                <SortButton field="phase" currentSortField={sortField} sortDir={sortDir} handleSort={handleSort}>Phase</SortButton>
               </TableHead>
               <TableHead className="text-[11px] text-right">
-                <SortButton field="price">Prix</SortButton>
+                <SortButton field="price" currentSortField={sortField} sortDir={sortDir} handleSort={handleSort}>Prix</SortButton>
               </TableHead>
               <TableHead className="text-[11px] text-right">
-                <SortButton field="changePercent">Var %</SortButton>
+                <SortButton field="changePercent" currentSortField={sortField} sortDir={sortDir} handleSort={handleSort}>Var %</SortButton>
               </TableHead>
               <TableHead className="text-[11px] text-center hidden md:table-cell">
                 MAs
               </TableHead>
               <TableHead className="text-[11px] text-right hidden lg:table-cell">
-                <SortButton field="mansfieldRS">RS</SortButton>
+                <SortButton field="mansfieldRS" currentSortField={sortField} sortDir={sortDir} handleSort={handleSort}>RS</SortButton>
               </TableHead>
               <TableHead className="text-[11px] text-right hidden lg:table-cell">
-                <SortButton field="volumeRatio">Vol</SortButton>
+                <SortButton field="volumeRatio" currentSortField={sortField} sortDir={sortDir} handleSort={handleSort}>Vol</SortButton>
               </TableHead>
               <TableHead className="text-[11px] text-center hidden xl:table-cell w-[120px]">
                 Tendance
@@ -400,9 +409,9 @@ export function StockRankingTable({
 
                   {/* Sparkline */}
                   <TableCell className="hidden xl:table-cell">
-                    {stock.historicalData.length > 0 && (
+                    {stock.sparklineData.length > 0 && (
                       <MiniSparkline
-                        data={stock.historicalData}
+                        data={stock.sparklineData}
                         days={30}
                         height={32}
                         width={100}

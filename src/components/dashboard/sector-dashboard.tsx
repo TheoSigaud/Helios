@@ -7,18 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PhaseBadge } from "@/components/stock/phase-badge";
 import { ScoreBadge, ScoreGauge } from "@/components/stock/score-gauge";
-import { MiniSparkline } from "@/components/charts/mini-sparkline";
 import {
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
   ChevronRight,
   Users,
 } from "lucide-react";
-import type { SectorAnalysis, StockAnalysis } from "@/lib/analysis/types";
+import type { SectorAnalysisSummary } from "@/lib/analysis/types";
 
 interface SectorDashboardProps {
-  sectors: SectorAnalysis[];
+  sectors: SectorAnalysisSummary[];
   className?: string;
 }
 
@@ -36,7 +32,7 @@ const SECTOR_ICONS: Record<string, string> = {
   Materials: "⛏",
 };
 
-function SectorCard({ sector }: { sector: SectorAnalysis }) {
+function SectorCard({ sector }: { sector: SectorAnalysisSummary }) {
   const sortedStocks = useMemo(
     () =>
       [...sector.stocks].sort(

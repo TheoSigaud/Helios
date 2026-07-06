@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { StockAnalysis, SectorAnalysis, Horizon, FilterOptions } from "@/lib/analysis/types";
+import type { StockAnalysis, StockAnalysisSummary, SectorAnalysisSummary, FilterOptions } from "@/lib/analysis/types";
 
 interface ScanResponse {
-  stocks: StockAnalysis[];
-  sectors: SectorAnalysis[];
+  stocks: StockAnalysisSummary[];
+  sectors: SectorAnalysisSummary[];
   meta: {
     totalScanned: number;
     totalResults: number;
@@ -19,6 +19,9 @@ export function useStockScan(filters: FilterOptions) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const sectorsDep = filters.sectors.join(",");
+  const phasesDep = filters.phases.join(",");
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -27,13 +30,13 @@ export function useStockScan(filters: FilterOptions) {
       const params = new URLSearchParams();
       params.set("horizon", filters.horizon);
       if (filters.sectors.length > 0) {
-        params.set("sectors", filters.sectors.join(","));
+        params.set("sectors", sectorsDep);
       }
       if (filters.minScore > 0) {
         params.set("minScore", String(filters.minScore));
       }
       if (filters.phases.length < 4) {
-        params.set("phases", filters.phases.join(","));
+        params.set("phases", phasesDep);
       }
       if (filters.breakoutOnly) {
         params.set("breakoutOnly", "true");
@@ -64,15 +67,18 @@ export function useStockScan(filters: FilterOptions) {
     }
   }, [
     filters.horizon, 
-    filters.sectors.join(","), 
+    sectorsDep, 
     filters.minScore, 
-    filters.phases.join(","),
+    phasesDep,
     filters.breakoutOnly,
     filters.maBreakout,
-    filters.phase1To2TransitionOnly
+    filters.phase1To2TransitionOnly,
+    filters.sectors.length,
+    filters.phases.length
   ]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
@@ -88,6 +94,7 @@ export function useWatchlist() {
     try {
       const stored = localStorage.getItem("helios-watchlist");
       if (stored) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSymbols(JSON.parse(stored));
       }
     } catch {

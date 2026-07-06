@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import { cn } from "@/lib/utils";
 
 interface ScoreGaugeProps {
@@ -13,17 +13,17 @@ interface ScoreGaugeProps {
 
 function getScoreColor(score: number): string {
   if (score >= 75) return "#22c55e"; // green
-  if (score >= 55) return "#84cc16"; // lime
-  if (score >= 40) return "#eab308"; // yellow
-  if (score >= 25) return "#f97316"; // orange
+  if (score >= 60) return "#84cc16"; // lime
+  if (score >= 50) return "#eab308"; // yellow
+  if (score >= 30) return "#f97316"; // orange
   return "#ef4444"; // red
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 75) return "Excellent";
-  if (score >= 55) return "Bon";
-  if (score >= 40) return "Neutre";
-  if (score >= 25) return "Faible";
+  if (score >= 75) return "Achat";
+  if (score >= 60) return "Bon";
+  if (score >= 50) return "Observer";
+  if (score >= 30) return "Faible";
   return "Éviter";
 }
 

@@ -8,7 +8,7 @@ import type {
   FilterOptions,
 } from '@/lib/analysis/types';
 import { calculateOpportunityScore } from '@/lib/analysis/opportunity-score';
-import { aggregateToWeekly } from '@/lib/data/aggregation';
+import { MARKET_BENCHMARKS } from '@/lib/data/stock-universe';
 
 // ── Re-export all types ──
 export type {
@@ -33,6 +33,7 @@ export {
 } from '@/lib/analysis/volume-analysis';
 export { findSupportResistance } from '@/lib/analysis/support-resistance';
 export { calculateATR, detectVCP } from '@/lib/analysis/volatility';
+export type { VCPResult } from '@/lib/analysis/volatility';
 export { calculateOpportunityScore } from '@/lib/analysis/opportunity-score';
 
 /**
@@ -65,9 +66,9 @@ export function analyzeStock(
   const change = currentPrice - previousClose;
   const changePercent = previousClose !== 0 ? (change / previousClose) * 100 : 0;
 
-  const weeklyData = aggregateToWeekly(data);
-  const weeklyBenchmarkData = aggregateToWeekly(benchmarkData);
-  const result = calculateOpportunityScore(weeklyData, weeklyBenchmarkData, horizon);
+  // Data is already in weekly format from the API providers
+  // (TwelveData: 1week, AlphaVantage: TIME_SERIES_WEEKLY, MarketStack: aggregated daily→weekly)
+  const result = calculateOpportunityScore(data, benchmarkData, horizon);
 
   return {
     symbol,
@@ -105,18 +106,23 @@ export function analyzeStock(
  * Analyze a universe of stocks and return results sorted by opportunity score (descending).
  *
  * @param stocks - Array of stock data objects
- * @param benchmarkData - Benchmark OHLCV data
+ * @param benchmarkDataMap - Map of benchmark symbols to OHLCV data
  * @param horizon - Investment horizon
  * @returns Array of StockAnalysis sorted by opportunity score descending
  */
 export function analyzeUniverse(
-  stocks: { symbol: string; name: string; sector: string; data: OHLCVData[] }[],
-  benchmarkData: OHLCVData[],
+  stocks: { symbol: string; name: string; sector: string; market?: string; data: OHLCVData[] }[],
+  benchmarkDataMap: Record<string, OHLCVData[]>,
   horizon: Horizon
 ): StockAnalysis[] {
-  const analyses = stocks.map((stock) =>
-    analyzeStock(stock.symbol, stock.name, stock.sector, stock.data, benchmarkData, horizon)
-  );
+  const defaultBenchmarkData = benchmarkDataMap['SPY'] || [];
+
+  const analyses = stocks.map((stock) => {
+    const benchmarkSymbol = stock.market ? MARKET_BENCHMARKS[stock.market] : 'SPY';
+    const benchmarkData = benchmarkDataMap[benchmarkSymbol] || defaultBenchmarkData;
+    
+    return analyzeStock(stock.symbol, stock.name, stock.sector, stock.data, benchmarkData, horizon);
+  });
 
   return analyses.sort((a, b) => b.opportunityScore - a.opportunityScore);
 }

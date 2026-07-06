@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { StockRankingTable } from "@/components/dashboard/stock-ranking-table";
 import { AddStockDialog } from "@/components/watchlist/add-stock-dialog";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStockScan, useWatchlist } from "@/hooks/use-stocks";
 import { DEFAULT_STOCKS } from "@/lib/data/stock-universe";
-import type { FilterOptions, StockAnalysis } from "@/lib/analysis/types";
+import type { FilterOptions } from "@/lib/analysis/types";
 import { Star, AlertCircle, Plus, Trash2 } from "lucide-react";
 
 const DEFAULT_FILTERS: FilterOptions = {
@@ -31,7 +31,7 @@ export default function WatchlistPage() {
   const watchlistStocks = useMemo(() => {
     if (!data?.stocks) return [];
     return data.stocks.filter((s) => watchlist.includes(s.symbol));
-  }, [data?.stocks, watchlist]);
+  }, [data, watchlist]);
 
   const allStockInfos = DEFAULT_STOCKS.map((s) => ({
     symbol: s.symbol,

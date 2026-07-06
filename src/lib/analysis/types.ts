@@ -62,6 +62,28 @@ export interface SectorAnalysis {
   topStock: StockAnalysis | null;
 }
 
+/**
+ * Lightweight version of StockAnalysis for the scan endpoint.
+ * Replaces the full `historicalData` array with a small `sparklineData`
+ * array (last 30 data points) to drastically reduce payload size.
+ */
+export type StockAnalysisSummary = Omit<StockAnalysis, 'historicalData'> & {
+  /** Last 30 data points for dashboard sparklines */
+  sparklineData: OHLCVData[];
+};
+
+/**
+ * Lightweight version of SectorAnalysis using StockAnalysisSummary.
+ */
+export interface SectorAnalysisSummary {
+  sector: string;
+  stocks: StockAnalysisSummary[];
+  avgScore: number;
+  phase2Count: number;
+  phase4Count: number;
+  topStock: StockAnalysisSummary | null;
+}
+
 export type Horizon = 'short' | 'medium' | 'long';
 
 export interface FilterOptions {

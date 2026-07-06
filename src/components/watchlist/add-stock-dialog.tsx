@@ -8,14 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, X, Check } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 interface AddStockDialogProps {
   onAdd: (symbol: string) => void;

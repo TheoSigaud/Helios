@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { analyzeStock } from '@/lib/analysis';
 import { getStockData, getBenchmarkData } from '@/lib/data/data-provider';
-import { STOCK_MAP } from '@/lib/data/stock-universe';
+import { STOCK_MAP, MARKET_BENCHMARKS } from '@/lib/data/stock-universe';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +31,10 @@ export async function GET(
     }
 
     // ── Fetch data ──────────────────────────────────────────────────────
+    const benchmarkSymbol = stockInfo.market ? MARKET_BENCHMARKS[stockInfo.market] : undefined;
     const [stockData, benchmarkData] = await Promise.all([
       getStockData(upperSymbol),
-      getBenchmarkData(),
+      getBenchmarkData(benchmarkSymbol),
     ]);
 
     if (!stockData || stockData.length === 0) {
@@ -64,10 +65,10 @@ export async function GET(
         },
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[/api/stocks/[symbol]] Error:', error);
     
-    if (error.name === 'NoDataError' || (error instanceof Error && error.message.includes('No data available'))) {
+    if (error instanceof Error && (error.name === 'NoDataError' || error.message.includes('No data available'))) {
       return NextResponse.json(
         { error: error.message },
         { status: 404 }

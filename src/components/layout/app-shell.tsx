@@ -5,15 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  BarChart3,
   LayoutDashboard,
   PieChart,
   Star,
   Sun,
   Moon,
   Menu,
-  X,
-  TrendingUp,
   Activity,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -48,6 +45,7 @@ function ThemeToggle() {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

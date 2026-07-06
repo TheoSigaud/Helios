@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useId } from "react";
 import {
   AreaChart,
   Area,
@@ -38,9 +38,10 @@ export function MiniSparkline({
   }, [chartData]);
 
   const color = isPositive ? "#22c55e" : "#ef4444";
+  const id = useId();
   const gradientId = useMemo(
-    () => `sparkline-${Math.random().toString(36).slice(2, 8)}`,
-    []
+    () => `sparkline-${id}`,
+    [id]
   );
 
   if (chartData.length < 2) return null;

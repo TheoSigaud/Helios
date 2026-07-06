@@ -11,7 +11,6 @@ import type { FilterOptions } from "@/lib/analysis/types";
 import {
   TrendingUp,
   BarChart3,
-  Zap,
   Shield,
   Activity,
   AlertCircle,

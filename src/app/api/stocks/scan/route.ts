@@ -4,12 +4,82 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import type { Horizon, StockAnalysis } from '@/lib/analysis/types';
-import { analyzeUniverse, groupBySector } from '@/lib/analysis';
-import { getAllStocksData, getBenchmarkData } from '@/lib/data/data-provider';
-import { DEFAULT_STOCKS, SECTORS, type SectorName } from '@/lib/data/stock-universe';
+import type { Horizon, StockAnalysis, StockAnalysisSummary, SectorAnalysisSummary } from '@/lib/analysis/types';
+import { analyzeUniverse } from '@/lib/analysis';
+import { getAllStocksData, getBenchmarksData } from '@/lib/data/data-provider';
+import { DEFAULT_STOCKS, MARKET_BENCHMARKS } from '@/lib/data/stock-universe';
 
 export const dynamic = 'force-dynamic';
+
+// ---------------------------------------------------------------------------
+// In-memory analysis cache
+// ---------------------------------------------------------------------------
+
+/** Cached analysis results to avoid re-reading disk + recalculating on every request. */
+interface AnalysisCacheEntry {
+  timestamp: number;
+  results: StockAnalysis[];
+}
+
+const ANALYSIS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const analysisCache = new Map<string, AnalysisCacheEntry>();
+
+/**
+ * Convert a StockAnalysis to a lightweight summary by replacing
+ * the full historicalData with a small sparkline subset.
+ */
+function toSummary(stock: StockAnalysis): StockAnalysisSummary {
+  const { historicalData, ...rest } = stock;
+  return {
+    ...rest,
+    sparklineData: historicalData.slice(-30),
+  };
+}
+
+/**
+ * Group summaries by sector (mirroring groupBySector but for summaries).
+ */
+function groupSummariesBySector(summaries: StockAnalysisSummary[]): SectorAnalysisSummary[] {
+  const sectorMap = new Map<string, StockAnalysisSummary[]>();
+
+  for (const analysis of summaries) {
+    const existing = sectorMap.get(analysis.sector);
+    if (existing) {
+      existing.push(analysis);
+    } else {
+      sectorMap.set(analysis.sector, [analysis]);
+    }
+  }
+
+  const sectors: SectorAnalysisSummary[] = [];
+
+  for (const [sector, stocks] of sectorMap.entries()) {
+    const avgScore =
+      stocks.length > 0
+        ? Math.round(
+            stocks.reduce((sum, s) => sum + s.opportunityScore, 0) / stocks.length
+          )
+        : 0;
+
+    const phase2Count = stocks.filter((s) => s.phase.stage === 2).length;
+    const phase4Count = stocks.filter((s) => s.phase.stage === 4).length;
+
+    const sortedStocks = [...stocks].sort(
+      (a, b) => b.opportunityScore - a.opportunityScore
+    );
+
+    sectors.push({
+      sector,
+      stocks: sortedStocks,
+      avgScore,
+      phase2Count,
+      phase4Count,
+      topStock: sortedStocks.length > 0 ? sortedStocks[0] : null,
+    });
+  }
+
+  return sectors.sort((a, b) => b.avgScore - a.avgScore);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,21 +126,40 @@ export async function GET(request: NextRequest) {
     }
     const symbols = stocksToScan.map((s) => s.symbol);
 
-    // ── Fetch data ──────────────────────────────────────────────────────
-    const [allStocksData, benchmarkData] = await Promise.all([
-      getAllStocksData(symbols),
-      getBenchmarkData(),
-    ]);
+    // ── Check in-memory cache ───────────────────────────────────────────
+    const cacheKey = `${horizon}`;
+    const cached = analysisCache.get(cacheKey);
+    let results: StockAnalysis[];
 
-    // ── Run analysis ────────────────────────────────────────────────────
-    const stockInputs = stocksToScan.map((stock) => ({
-      symbol: stock.symbol,
-      name: stock.name,
-      sector: stock.sector,
-      data: allStocksData[stock.symbol] || [],
-    }));
+    if (cached && Date.now() - cached.timestamp < ANALYSIS_CACHE_TTL_MS) {
+      // Use cached results — filter by the requested symbols
+      const symbolSet = new Set(symbols);
+      results = cached.results.filter((r) => symbolSet.has(r.symbol));
+    } else {
+      // ── Fetch data (parallel disk reads) ────────────────────────────────
+      const benchmarkSymbols = Array.from(new Set(Object.values(MARKET_BENCHMARKS)));
+      const [allStocksData, benchmarkDataMap] = await Promise.all([
+        getAllStocksData(symbols),
+        getBenchmarksData(benchmarkSymbols),
+      ]);
 
-    const results = analyzeUniverse(stockInputs, benchmarkData, horizon);
+      // ── Run analysis ────────────────────────────────────────────────────
+      const stockInputs = stocksToScan.map((stock) => ({
+        symbol: stock.symbol,
+        name: stock.name,
+        sector: stock.sector,
+        market: stock.market,
+        data: allStocksData[stock.symbol] || [],
+      }));
+
+      results = analyzeUniverse(stockInputs, benchmarkDataMap, horizon);
+
+      // ── Store in memory cache ───────────────────────────────────────────
+      analysisCache.set(cacheKey, {
+        timestamp: Date.now(),
+        results,
+      });
+    }
 
     // ── Apply filters ───────────────────────────────────────────────────
     let filtered = results.filter((r) => r.opportunityScore >= minScore);
@@ -88,15 +177,18 @@ export async function GET(request: NextRequest) {
       filtered = filtered.filter((r) => r.isPhase1To2Transition);
     }
 
+    // ── Convert to lightweight summaries (strip historicalData) ──────────
+    const summaries = filtered.map(toSummary);
+
     // ── Group by sector ─────────────────────────────────────────────────
-    const sectorBreakdown = groupBySector(filtered);
+    const sectorBreakdown = groupSummariesBySector(summaries);
 
     return NextResponse.json({
-      stocks: filtered,
+      stocks: summaries,
       sectors: sectorBreakdown,
       meta: {
         totalScanned: symbols.length,
-        totalResults: filtered.length,
+        totalResults: summaries.length,
         horizon,
         selectedSectors: selectedSectors.length > 0 ? selectedSectors : 'all',
         minScore,

@@ -17,7 +17,7 @@ export function SyncButton() {
     
     try {
       const targets = await getSyncTargets();
-      const allSymbols = [targets.benchmark, ...targets.symbols];
+      const allSymbols = [...targets.benchmarks, ...targets.symbols];
       setProgress({ current: 0, total: allSymbols.length });
 
       // Regrouper par paquets de 8 pour le batching natif de Twelve Data
@@ -36,8 +36,9 @@ export function SyncButton() {
       }
 
       window.location.reload();
-    } catch (err: any) {
-      setError(err.message || "An error occurred during sync");
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      setError(errMsg || "An error occurred during sync");
     } finally {
       setIsSyncing(false);
     }
