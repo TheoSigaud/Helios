@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -20,6 +21,7 @@ import {
 import { PhaseBadge } from "@/components/stock/phase-badge";
 import { ScoreBadge } from "@/components/stock/score-gauge";
 import { MiniSparkline } from "@/components/charts/mini-sparkline";
+import { useDebounce } from "@/hooks/use-debounce";
 
 import {
   ArrowUpDown,
@@ -31,6 +33,7 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import type { StockAnalysisSummary } from "@/lib/analysis/types";
 
@@ -98,6 +101,32 @@ function formatLargeNumber(n: number): string {
   return n.toString();
 }
 
+function getPageNumbers(currentPage: number, totalPages: number) {
+  const pages: (number | string)[] = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+  } else {
+    if (currentPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1);
+      pages.push("...");
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push("...");
+      for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    }
+  }
+  return pages;
+}
+
 export function StockRankingTable({
   stocks,
   watchlist = [],
@@ -107,6 +136,8 @@ export function StockRankingTable({
   const [sortField, setSortField] = useState<SortField>("score");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const pageSize = 50;
 
   React.useEffect(() => {
@@ -124,7 +155,7 @@ export function StockRankingTable({
     setCurrentPage(1);
   };
 
-  const sortedStocks = useMemo(() => {
+  const globallySortedStocks = useMemo(() => {
     return [...stocks].sort((a, b) => {
       let valA: number | string;
       let valB: number | string;
@@ -175,17 +206,45 @@ export function StockRankingTable({
       return sortDir === "asc"
         ? (valA as number) - (valB as number)
         : (valB as number) - (valA as number);
-    });
+    }).map((stock, index) => ({
+      ...stock,
+      globalRank: index + 1
+    }));
   }, [stocks, sortField, sortDir]);
 
-  const totalPages = Math.ceil(sortedStocks.length / pageSize);
+  const filteredStocks = useMemo(() => {
+    if (!debouncedSearchQuery.trim()) return globallySortedStocks;
+    const query = debouncedSearchQuery.toLowerCase();
+    return globallySortedStocks.filter(
+      (s) =>
+        s.symbol.toLowerCase().includes(query) ||
+        s.name.toLowerCase().includes(query)
+    );
+  }, [globallySortedStocks, debouncedSearchQuery]);
+
+  const totalPages = Math.ceil(filteredStocks.length / pageSize);
   const paginatedStocks = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
-    return sortedStocks.slice(startIndex, startIndex + pageSize);
-  }, [sortedStocks, currentPage]);
+    return filteredStocks.slice(startIndex, startIndex + pageSize);
+  }, [filteredStocks, currentPage]);
 
   return (
     <div className={cn("rounded-xl border border-border overflow-hidden", className)}>
+      <div className="p-4 border-b border-border bg-card/50">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Rechercher par symbole ou nom..."
+            className="pl-9 bg-background"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+      </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -226,7 +285,7 @@ export function StockRankingTable({
           <TableBody>
             {paginatedStocks.map((stock, idx) => {
               const isInWatchlist = watchlist.includes(stock.symbol);
-              const rank = (currentPage - 1) * pageSize + idx + 1;
+              const rank = stock.globalRank;
 
               return (
                 <TableRow
@@ -441,16 +500,16 @@ export function StockRankingTable({
         </Table>
       </div>
 
-      {sortedStocks.length === 0 && (
+      {filteredStocks.length === 0 && (
         <div className="py-12 text-center text-muted-foreground text-sm">
           Aucune action ne correspond aux filtres sélectionnés.
         </div>
       )}
 
-      {sortedStocks.length > 0 && totalPages > 1 && (
+      {filteredStocks.length > 0 && totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-4 border-t border-border bg-muted/10">
           <div className="text-sm text-muted-foreground hidden sm:block">
-            Affichage de {(currentPage - 1) * pageSize + 1} à {Math.min(currentPage * pageSize, sortedStocks.length)} sur {sortedStocks.length} actions
+            Affichage de {(currentPage - 1) * pageSize + 1} à {Math.min(currentPage * pageSize, filteredStocks.length)} sur {filteredStocks.length} actions
           </div>
           <div className="flex items-center justify-end sm:justify-between w-full sm:w-auto gap-2">
             <Button
@@ -462,7 +521,24 @@ export function StockRankingTable({
               <ChevronLeft className="h-4 w-4 mr-1" />
               Précédent
             </Button>
-            <div className="text-sm font-medium px-2">
+            <div className="hidden md:flex items-center gap-1 mx-2">
+              {getPageNumbers(currentPage, totalPages).map((page, index) => (
+                page === "..." ? (
+                  <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">...</span>
+                ) : (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    className="w-8 h-8 p-0"
+                    onClick={() => setCurrentPage(page as number)}
+                  >
+                    {page}
+                  </Button>
+                )
+              ))}
+            </div>
+            <div className="md:hidden text-sm font-medium px-2">
               Page {currentPage} sur {totalPages}
             </div>
             <Button
